@@ -78,6 +78,7 @@ pub const TABLE: &[(&str, Class)] = &[
     // L7 platform + frontends
     ("platform", Class::Layer(7)),
     ("ui-common", Class::Layer(7)),
+    ("craft-android", Class::Layer(7)),
     ("ui-egui", Class::Layer(7)),
     ("automation", Class::Layer(7)),
     // test support
@@ -95,6 +96,7 @@ pub const STANDALONE_DEPS: &[(&str, &[&str])] = &[("cos", &["filters", "crypt", 
 
 /// Allowed same-layer edges (architecture §3 rule 1). `forms → js` is deliberately absent.
 pub const SIDEWAYS: &[(&str, &str)] = &[
+    ("ui-egui", "craft-android"),
     ("redact", "edit"),
     ("a11y", "preflight"),
     ("prepress", "preflight"),

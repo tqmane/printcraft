@@ -19,7 +19,6 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
 
-rfd = { workspace = true }
 png = "0.18"
 base64 = "0.22"
 
@@ -27,7 +26,6 @@ base64 = "0.22"
 # Control-channel tokens.
 getrandom = "0.4"
 # Create ▸ Clipboard (images; already in the tree through egui-winit).
-arboard = { version = "3.6", default-features = false, features = ["image-data"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4"
@@ -40,3 +38,12 @@ printcraft-cos = { workspace = true }
 printcraft-model = { workspace = true }
 egui_kittest = { workspace = true, features = ["eframe", "wgpu"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+rfd = { workspace = true }
+
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))'.dependencies]
+arboard = { version = "3.6", default-features = false, features = ["image-data"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+craft-android = { package = "craft-android", path = "../../platform/android" }

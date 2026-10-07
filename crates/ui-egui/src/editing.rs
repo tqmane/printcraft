@@ -154,6 +154,13 @@ impl PrintCraftApp {
 
     /// Save the document shown in tab `index`. Returns `true` if it was written.
     pub fn save_view(&mut self, index: usize, target: SaveTarget) -> bool {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.save_view(index, target);
+            })
+        };
+
         let Some(id) = self.views.get(index).map(|v| v.id) else { return false };
         let Some(doc) = self.session.get(id) else { return false };
         let (name, path) = (doc.name.clone(), doc.path.clone());
@@ -350,6 +357,10 @@ pub fn write_atomically(path: &str, bytes: &[u8]) -> std::io::Result<()> {
     })();
     if result.is_err() {
         let _ = std::fs::remove_file(&tmp);
+    }
+    #[cfg(target_os = "android")]
+    if result.is_ok() {
+        rfd::publish_file(target).map_err(std::io::Error::other)?;
     }
     result
 }

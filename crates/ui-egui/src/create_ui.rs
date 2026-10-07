@@ -129,6 +129,13 @@ impl PrintCraftApp {
 
     /// Create ▸ Images: several images, one page each, in one new document.
     pub(crate) fn create_from_images_dialog(&mut self) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.create_from_images_dialog();
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let Some(files) = rfd::FileDialog::new()

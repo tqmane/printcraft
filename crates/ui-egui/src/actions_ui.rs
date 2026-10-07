@@ -39,6 +39,15 @@ impl PrintCraftApp {
     /// Run `action` on files, writing the results into a folder the user picks (the export
     /// folder override in tests), in the background.
     pub fn run_action_on(&mut self, action: Action, files: Vec<(String, Vec<u8>)>) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            let action = action.clone();
+            let files = files.clone();
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.run_action_on(action.clone(), files.clone());
+            })
+        };
+
         if self.action_run.is_some() {
             self.notify("An action is already running");
             return;
@@ -115,6 +124,13 @@ impl PrintCraftApp {
 
     /// Start: ask for the files, then run the selected action on them.
     fn start_selected_action(&mut self) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.start_selected_action();
+            })
+        };
+
         let Some(action) = self.wizard.selected.as_ref().and_then(|n| self.all_actions().into_iter().find(|a| &a.name == n)) else { return };
         #[cfg(not(target_arch = "wasm32"))]
         {

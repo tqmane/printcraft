@@ -131,6 +131,13 @@ pub(crate) fn palette_section(app: &mut PrintCraftApp, ui: &mut egui::Ui, t: &To
 impl PrintCraftApp {
     /// Create ▸ choose a PDF or an image for a new custom stamp.
     pub(crate) fn pick_stamp_file(&mut self) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.pick_stamp_file();
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let picked = match self.save_override.clone() {

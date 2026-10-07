@@ -184,6 +184,14 @@ impl PrintCraftApp {
     /// Recognize text in each file, writing the searchable copies into a folder the user picks
     /// (the export folder override in tests), under the same names.
     pub fn ocr_files(&mut self, files: Vec<(String, Vec<u8>)>) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            let files = files.clone();
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.ocr_files(files.clone());
+            })
+        };
+
         if self.ocr_batch.is_some() {
             self.notify("Text recognition is already running");
             return;

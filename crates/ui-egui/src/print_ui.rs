@@ -132,7 +132,10 @@ impl PrintDraft {
 impl PrintCraftApp {
     pub fn open_print(&mut self) {
         let Some((i, _)) = self.active_ids() else { return };
+        #[cfg(not(target_os = "android"))]
         let printers = spool::printers();
+        #[cfg(target_os = "android")]
+        let printers = vec![spool::Printer { name: "Android print services".into(), default: true }];
         let default = printers.iter().find(|p| p.default).or(printers.first()).map(|p| p.name.clone());
         let current = self.views[i].current;
         let keep = std::mem::take(&mut self.print_draft);
@@ -142,6 +145,13 @@ impl PrintCraftApp {
 
     /// Print (or save) with the dialog's settings. Returns `true` on success.
     pub fn print_now(&mut self) -> bool {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.print_now();
+            })
+        };
+
         let Some((_, id)) = self.active_ids() else { return false };
         let Some(doc) = self.session.get(id) else { return false };
         let labels: Vec<String> = doc.info.pages.iter().map(|p| p.label.clone()).collect();
@@ -161,16 +171,31 @@ impl PrintCraftApp {
             }
         };
         match self.print_draft.printer.clone() {
-            Some(printer) => match spool::submit(&bytes, &self.print_draft.job(&name)) {
-                Ok(msg) => {
-                    self.notify(if msg.is_empty() { format!("Sent to {printer}") } else { format!("Sent to {printer}: {msg}") });
-                    true
+            Some(printer) => {
+                #[cfg(not(target_os = "android"))]
+                let result = spool::submit(&bytes, &self.print_draft.job(&name)).map_err(|e| e.to_string());
+                #[cfg(target_os = "android")]
+                let result = rfd::print_pdf(
+                    &bytes,
+                    &name,
+                    self.print_draft.grayscale,
+                    match self.print_draft.duplex {
+                        spool::Duplex::Off => 0,
+                        spool::Duplex::LongEdge => 1,
+                        spool::Duplex::ShortEdge => 2,
+                    },
+                );
+                match result {
+                    Ok(msg) => {
+                        self.notify(if msg.is_empty() { format!("Sent to {printer}") } else { format!("Sent to {printer}: {msg}") });
+                        true
+                    }
+                    Err(e) => {
+                        self.notify(e.to_string());
+                        false
+                    }
                 }
-                Err(e) => {
-                    self.notify(e.to_string());
-                    false
-                }
-            },
+            }
             None => {
                 let path = match self.save_override.clone() {
                     Some(p) => Some(std::path::PathBuf::from(p)),
@@ -183,7 +208,7 @@ impl PrintCraftApp {
                     None => None,
                 };
                 let Some(path) = path else { return false };
-                match std::fs::write(&path, &bytes) {
+                match crate::editing::write_atomically(&path.to_string_lossy(), &bytes) {
                     Ok(()) => {
                         self.notify(format!("Saved the print-ready PDF to {}", path.display()));
                         true

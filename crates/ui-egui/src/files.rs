@@ -116,6 +116,13 @@ impl PrintCraftApp {
     }
 
     fn pick_files(&mut self, purpose: FilePurpose, multiple: bool) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.pick_files(purpose, multiple);
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let dialog = rfd::FileDialog::new().add_filter("PDF", &["pdf"]);
@@ -251,6 +258,15 @@ impl PrintCraftApp {
 
     /// Write named files into a chosen folder (desktop) or as downloads (web). Returns how many.
     pub(crate) fn write_files(&mut self, named: &[(String, Arc<Vec<u8>>)], title: &str) -> usize {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            let named = named.to_vec();
+            let title = title.to_string();
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.write_files(&named, &title);
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let dir = match &self.export_dir_override {
@@ -367,6 +383,13 @@ pub(crate) fn strip_pdf(name: &str) -> &str {
 impl PrintCraftApp {
     /// Comments ▸ Import comments / Prepare a form ▸ Import data: XFDF, FDF, XML, CSV or text.
     pub fn import_data_dialog(&mut self) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.import_data_dialog();
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let picked = match self.save_override.clone() {
@@ -393,6 +416,13 @@ impl PrintCraftApp {
     /// Export all comments / form data: the format follows the file name's extension.
     /// Export a PDF ▸ Word, HTML or RTF: ask where (`save_override` in tests), then write.
     pub fn export_office_dialog(&mut self, format: printcraft_engine::compare::OfficeFormat) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.export_office_dialog(format);
+            })
+        };
+
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let stem = doc.name.trim_end_matches(".pdf").trim_end_matches(".PDF").to_string();
@@ -423,6 +453,13 @@ impl PrintCraftApp {
     /// Forms ▸ Merge data files into spreadsheet: choose data files (FDF, XFDF or filled-in PDF
     /// forms), then where to save the CSV.
     pub fn merge_data_dialog(&mut self) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.merge_data_dialog();
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let paths = rfd::FileDialog::new()
@@ -448,6 +485,14 @@ impl PrintCraftApp {
 
     /// Merge the given data files and save the spreadsheet (asks where; `save_override` in tests).
     pub fn merge_data_files(&mut self, files: Vec<(String, Vec<u8>)>) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            let files = files.clone();
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.merge_data_files(files.clone());
+            })
+        };
+
         let csv = match printcraft_engine::merge_data_files(&files) {
             Ok(c) => c,
             Err(e) => return self.notify(e),
@@ -469,6 +514,13 @@ impl PrintCraftApp {
     }
 
     pub fn export_data_dialog(&mut self, comments: bool, fields: bool) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.export_data_dialog(comments, fields);
+            })
+        };
+
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let stem = doc.name.trim_end_matches(".pdf").trim_end_matches(".PDF").to_string();

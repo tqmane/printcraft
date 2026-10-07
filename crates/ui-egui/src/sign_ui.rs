@@ -251,7 +251,7 @@ impl PrintCraftApp {
             .map(|i| dir.join(if i == 1 { format!("{stem}.p12") } else { format!("{stem} {i}.p12") }))
             .find(|p| !p.exists())
             .ok_or("no free file name for the digital ID")?;
-        std::fs::write(&path, &p12).map_err(|e| e.to_string())?;
+        crate::editing::write_atomically(&path.to_string_lossy(), &p12).map_err(|e| e.to_string())?;
         Ok(self.add_digital_id(&path.to_string_lossy(), &cert))
     }
 
@@ -268,6 +268,15 @@ impl PrintCraftApp {
 
     /// Sign as …: open the ID, sign, save the signed file (Save As), and show it.
     fn finish_signing(&mut self) -> Result<(), String> {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                if let Err(e) = app.finish_signing() {
+                    rfd::report_error(&e);
+                }
+            })
+        };
+
         let Some((_, doc_id)) = self.active_ids() else { return Err("no document".into()) };
         let d = self.sign_draft.clone().ok_or("nothing to sign")?;
         let entry = d.selected.and_then(|i| self.digital_ids.get(i)).cloned().ok_or("Choose a digital ID.")?;
@@ -303,7 +312,7 @@ impl PrintCraftApp {
             None => None,
         };
         let Some(path) = path else { return Err(String::new()) };
-        std::fs::write(&path, signed.as_slice()).map_err(|e| format!("Could not save: {e}"))?;
+        crate::editing::write_atomically(&path.to_string_lossy(), signed.as_slice()).map_err(|e| format!("Could not save: {e}"))?;
         self.session.mark_signed(doc_id, signed, Some(path.to_string_lossy().into_owned())).map_err(|e| e.to_string())?;
         if let Some((i, _)) = self.active_ids() {
             self.views[i].invalidate_content();

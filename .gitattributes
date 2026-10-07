@@ -13,3 +13,6 @@
 *.ico binary
 *.png binary
 *.brotli binary
+
+# The generated Windows wrapper intentionally uses CRLF.
+packaging/android/gradlew.bat whitespace=cr-at-eol

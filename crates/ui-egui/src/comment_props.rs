@@ -31,6 +31,13 @@ const ICONS: [NoteIcon; 7] =
 impl PrintCraftApp {
     /// Attach file: ask for a file (or take `attach_override`) and attach it at `at`.
     pub fn attach_file_comment(&mut self, page: usize, at: [f64; 2]) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.attach_file_comment(page, at);
+            })
+        };
+
         let picked = match self.attach_override.take() {
             Some(f) => Some(f),
             #[cfg(not(target_arch = "wasm32"))]

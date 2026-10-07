@@ -108,6 +108,7 @@ pub fn toast(app: &mut PrintCraftApp, ctx: &egui::Context) {
 }
 
 /// The ArtCraft wordmark (Storyteller's brand, docs/brand/; not open source), sized to `height`.
+#[cfg(not(target_os = "android"))]
 pub fn artcraft_logo(ui: &mut egui::Ui, height: f32) -> Response {
     let dark = ui.visuals().dark_mode;
     let (uri, bytes): (&str, &'static [u8]) = if dark {
@@ -119,6 +120,7 @@ pub fn artcraft_logo(ui: &mut egui::Ui, height: f32) -> Response {
 }
 
 /// The ArtCraft mark (brand blue, works on light and dark), `size` points square.
+#[cfg(not(target_os = "android"))]
 pub fn artcraft_mark(ui: &mut egui::Ui, size: f32) -> Response {
     ui.add(
         egui::Image::from_bytes("bytes://artcraft-mark.svg", include_bytes!("../../../docs/brand/artcraft-mark.svg"))
@@ -159,4 +161,17 @@ pub fn icon_pill(ui: &mut egui::Ui, icon: &str, label: &str, primary: bool) -> R
     crate::icons::paint(ui, Rect::from_min_size(rect.min + vec2(12.0, 7.0), vec2(16.0, 16.0)), icon, 15.0, text);
     ui.painter().text(rect.left_center() + vec2(34.0, 0.0), Align2::LEFT_CENTER, label, font, text);
     resp
+}
+
+#[cfg(target_os = "android")]
+pub fn artcraft_logo(ui: &mut egui::Ui, height: f32) -> Response {
+    ui.label(egui::RichText::new("PrintCraft").size(height))
+}
+#[cfg(target_os = "android")]
+pub fn artcraft_mark(ui: &mut egui::Ui, size: f32) -> Response {
+    ui.add(
+        egui::Image::from_bytes("bytes://printcraft-icon.svg", include_bytes!("../../../assets/app-icon/printcraft-small.svg"))
+            .fit_to_exact_size(vec2(size, size))
+            .alt_text("PrintCraft"),
+    )
 }

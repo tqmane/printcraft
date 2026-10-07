@@ -5,8 +5,8 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "deny"
 
 [dependencies]
 # Help ▸ Check for updates (issue #28): one HTTPS request to GitHub, over rustls with the OS's
@@ -27,3 +27,15 @@ fmv-macos-events = "=0.1.0"
 [build-dependencies]
 # Icon + VERSIONINFO for printcraft.exe; build.rs only uses it when targeting Windows.
 winresource = "0.1"
+
+[lib]
+path = "src/main.rs"
+crate-type = ["cdylib"]
+
+[target.'cfg(target_os = "android")'.dependencies]
+craft-android = { package = "craft-android", path = "../../platform/android" }
+eframe = { workspace = true, features = ["android-game-activity"] }
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"

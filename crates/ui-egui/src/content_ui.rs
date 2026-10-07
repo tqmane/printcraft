@@ -406,6 +406,13 @@ pub(crate) fn hint(ui: &mut egui::Ui, t: &Tokens) {
 impl crate::PrintCraftApp {
     /// Edit a PDF ▸ Add content ▸ Image: pick a file and place it in the middle of the current page.
     pub fn add_image_dialog(&mut self) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.add_image_dialog();
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let picked = match self.save_override.clone() {
@@ -432,6 +439,13 @@ impl crate::PrintCraftApp {
 
     /// Edit text & images ▸ Replace Image: pick a file to draw in a page image's place.
     pub(crate) fn replace_page_image_dialog(&mut self, page: usize, index: usize) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.replace_page_image_dialog(page, index);
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let picked = match self.save_override.clone() {
@@ -474,6 +488,14 @@ impl crate::PrintCraftApp {
 
     /// Click an image field: pick a picture for it.
     pub fn choose_field_image(&mut self, name: &str) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            let name = name.to_string();
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.choose_field_image(&name);
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let picked = match self.save_override.clone() {
@@ -498,6 +520,13 @@ impl crate::PrintCraftApp {
 
     /// Edit image ▸ Replace: pick a file for the selected image.
     pub fn replace_image_dialog(&mut self, page: usize, index: usize) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.replace_image_dialog(page, index);
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         {
             let picked = match self.save_override.clone() {

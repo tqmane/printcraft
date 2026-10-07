@@ -690,6 +690,13 @@ impl PrintCraftApp {
 
     /// Save an attachment to disk, or open a PDF attachment in a new tab.
     pub fn attachment_action(&mut self, doc: DocId, index: usize, open: bool) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.attachment_action(doc, index, open);
+            })
+        };
+
         let Some(d) = self.session.get(doc) else { return };
         let Some(att) = d.info.attachments.get(index).cloned() else { return };
         let data = printcraft_render::attachment_data(&d.bytes, d.password.as_deref(), &att);
@@ -703,7 +710,7 @@ impl PrintCraftApp {
             (Ok(bytes), false) => {
                 #[cfg(not(target_arch = "wasm32"))]
                 if let Some(path) = rfd::FileDialog::new().set_file_name(&att.name).save_file() {
-                    match std::fs::write(&path, &bytes) {
+                    match crate::editing::write_atomically(&path.to_string_lossy(), &bytes) {
                         Ok(()) => self.notify(format!("Saved {}", path.display())),
                         Err(e) => self.notify(format!("Couldn't save: {e}")),
                     }
@@ -750,6 +757,13 @@ impl PrintCraftApp {
     }
 
     pub fn open_dialog(&mut self) {
+        #[cfg(target_os = "android")]
+        let _android_resume = {
+            rfd::resume_with(move |app: &mut crate::PrintCraftApp| {
+                app.open_dialog();
+            })
+        };
+
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(p) =
             rfd::FileDialog::new().add_filter("PDF", &["pdf"]).add_filter("Images and text (converted to PDF)", &create_ui::CONVERTIBLE).pick_file()
@@ -818,6 +832,8 @@ impl PrintCraftApp {
 
     /// Run a catalogue command. Commands that aren't implemented yet say which milestone ships them.
     pub fn run_command(&mut self, command: &str) {
+        #[cfg(target_os = "android")]
+        let _android_command = rfd::command(command, serde_json::Value::Null);
         if printcraft_engine::commands::command(command).is_some() {
             self.execute(command);
             return;
@@ -1122,11 +1138,28 @@ impl PrintCraftApp {
 }
 
 impl eframe::App for PrintCraftApp {
+    #[cfg(target_os = "android")]
+    fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
+        rfd::stylus_input(ctx, raw);
+    }
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         storage.set_string("printcraft", self.persist());
     }
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        #[cfg(target_os = "android")]
+        if let Some((id, params)) = rfd::completed_command(ctx) {
+            let _ = params;
+            self.run_command(&id);
+        }
+        #[cfg(target_os = "android")]
+        if let Some(callback) = rfd::take_callback::<Self>() {
+            callback(self);
+        }
+        #[cfg(target_os = "android")]
+        if rfd::dialog_pending() {
+            return;
+        }
         self.ctx = Some(ctx.clone());
         if !self.styled {
             egui_extras::install_image_loaders(ctx);
@@ -1242,3 +1275,8 @@ impl eframe::App for PrintCraftApp {
         widgets::toast(self, &ctx);
     }
 }
+
+#[cfg(target_os = "android")]
+extern crate craft_android as arboard;
+#[cfg(target_os = "android")]
+extern crate craft_android as rfd;

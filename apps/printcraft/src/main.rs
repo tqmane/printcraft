@@ -33,7 +33,7 @@ const APP_ICON_PNG: &[u8] = include_bytes!("../../../assets/app-icon/printcraft-
 #[cfg(not(target_os = "macos"))]
 const APP_ICON_PNG: &[u8] = include_bytes!("../../../assets/app-icon/hicolor/256x256/apps/ai.storyteller.printcraft.png");
 
-fn main() -> eframe::Result {
+pub fn main() -> eframe::Result {
     // Last-resort guard (AGENTS.md §4): commands, edits, opens and saves catch panics and report
     // them; this hook logs every panic, caught or not, with a backtrace when RUST_BACKTRACE is set.
     std::panic::set_hook(Box::new(|info| {
@@ -46,7 +46,7 @@ fn main() -> eframe::Result {
     let mut files = Vec::new();
     let mut options: Vec<(String, String)> = Vec::new();
     let mut control_file: Option<String> = None;
-    let mut args = std::env::args().skip(1);
+    let mut args = app_args().skip(1);
     while let Some(a) = args.next() {
         match a.as_str() {
             "--version" => {
@@ -79,7 +79,13 @@ fn main() -> eframe::Result {
     }
     // eframe would otherwise derive the settings folder from the app id: keep it under "PrintCraft".
     let persistence_path = eframe::storage_dir("PrintCraft").map(|d| d.join("app.ron"));
-    let mut native = eframe::NativeOptions { viewport, persistence_path, ..Default::default() };
+    let mut native = eframe::NativeOptions {
+        #[cfg(target_os = "android")]
+        android_app: rfd::android_app(),
+        viewport,
+        persistence_path,
+        ..Default::default()
+    };
     configure_gpu(&mut native);
     // Finder, Open With and the Dock deliver files as Apple events, not arguments; catch the one
     // that launched us as well as later ones. Lives until the event loop returns.
@@ -89,7 +95,7 @@ fn main() -> eframe::Result {
     let apple_events = &apple_events;
     eframe::run_native(
         "PrintCraft",
-        native,
+        platform_options(native),
         Box::new(move |cc| {
             let mut app = PrintCraftApp::new();
             if let Some(json) = cc.storage.and_then(|s| s.get_string("printcraft")) {
@@ -183,5 +189,40 @@ mod tests {
             assert!(backends.contains(eframe::wgpu::Backends::DX12), "{backends:?}");
             assert!(!backends.contains(eframe::wgpu::Backends::VULKAN), "issue #37: {backends:?}");
         }
+    }
+}
+
+#[cfg(target_os = "android")]
+#[allow(unsafe_code)] // Android's loader requires this exact exported entry-point symbol.
+#[unsafe(no_mangle)]
+pub fn android_main(app: rfd::AndroidApp) {
+    if let Err(error) = rfd::initialize(app) {
+        eprintln!("Android initialization failed: {error}");
+        return;
+    }
+    if let Err(error) = main() {
+        rfd::report_error(&format!("Application failed: {error}"));
+    }
+}
+
+#[cfg(target_os = "android")]
+extern crate craft_android as arboard;
+#[cfg(target_os = "android")]
+extern crate craft_android as rfd;
+
+fn platform_options(options: eframe::NativeOptions) -> eframe::NativeOptions {
+    #[cfg(target_os = "android")]
+    let options = rfd::configure_options(options);
+    options
+}
+
+fn app_args() -> impl Iterator<Item = String> {
+    #[cfg(not(target_os = "android"))]
+    {
+        std::env::args()
+    }
+    #[cfg(target_os = "android")]
+    {
+        rfd::arguments().into_iter()
     }
 }
